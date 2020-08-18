@@ -3,7 +3,7 @@ import csv
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d
 
-comfortableDecRate=-3.4
+comfortableDecRate=-3.
 def score(accelerations):
     minDec=np.amin(accelerations)
     if minDec>comfortableDecRate:
