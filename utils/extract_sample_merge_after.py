@@ -262,7 +262,9 @@ def extract_sample_multiple_snapshot():
 def extract_sample_modified_loss_function():
     vehicleLength = 5.
     dir0 = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
-    dir = dir0 + '0400pm-0415pm/'
+    # dir = dir0 + '0400pm-0415pm/'
+    # dir = dir0 + '0500pm-0515pm/'
+    dir = dir0 + '0515pm-0530pm/'
     data = np.genfromtxt(dir + 'lane_changes_merge_after.csv', delimiter=',')
     output = open(dir + 'samples_merge_after_snapshots.csv', 'w')
     writer = csv.writer(output)

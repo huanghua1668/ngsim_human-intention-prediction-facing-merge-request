@@ -77,8 +77,12 @@ observationLength = 5
 shortestDuration = 15
 
 dir0 = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
-dir = dir0 + '0400pm-0415pm/'
-data = np.loadtxt(dir + 'trajectories-0400-0415.txt')
+# dir = dir0 + '0400pm-0415pm/'
+# data = np.loadtxt(dir + 'trajectories-0400-0415.txt')
+# dir = dir0 + '0500pm-0515pm/'
+# data = np.loadtxt(dir + 'trajectories-0500-0515.txt')
+dir = dir0 + '0515pm-0530pm/'
+data = np.loadtxt(dir + 'trajectories-0515-0530.txt')
 
 f_lane_change_index = open(dir + 'lane_change_row_index.csv', 'w')
 f_lane_change = open(dir + 'lane_changes.csv', 'w')

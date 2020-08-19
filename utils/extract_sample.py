@@ -204,6 +204,8 @@ def extract_samples_modified_loss_function():
     vehicleLength = 5.
     dir0 = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
     dir = dir0 + '0400pm-0415pm/'
+    # dir = dir0 + '0500pm-0515pm/'
+    # dir = dir0 + '0515pm-0530pm/'
     data = np.genfromtxt(dir+'lane_changes.csv', delimiter=',')
     output = open(dir+'samples_snapshots.csv', 'w')
     writer = csv.writer(output)
@@ -250,7 +252,7 @@ def extract_samples_modified_loss_function():
                     data[j, 6] *= -1.
                 print('no leading vehilce at original lane at ', j)
 
-        j = start0 + observationLength
+        j = start0 + observationLength -1
         dx0 = data[j, 3] - data[j, 15]
         dx1 = data[j, 3] - data[j, 11]
         dx2 = data[j, 3] - data[j, 7]
@@ -265,7 +267,11 @@ def extract_samples_modified_loss_function():
         cooperates += y
 
         sample = [count, u0, du0, du1, du2, dx0, dx1, dx2, dy0, dy1, dy2, y]
+        ###
+        if y == 0 and du0 > 3. and  dx0 >= 14.:
+            print('abnormal adv at i=', i, 'dv=', du0, ', dx=', dx0)
 
+        ###
         if y == 1:
             plt.scatter(du0, dx0, color='blue', marker='o')
         else:
