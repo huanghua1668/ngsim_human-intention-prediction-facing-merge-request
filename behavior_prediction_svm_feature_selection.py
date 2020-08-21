@@ -9,14 +9,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from torch import Tensor
 import matplotlib.pyplot as plt
-
 from utils import visualize as vize
-
-seed0 = 1013899
-seed1 = 1018859
-
-dir = '/home/hh/ngsim/data/'
-
 
 # build a MLP
 class Net(nn.Module):
@@ -105,35 +98,13 @@ def loadData():
     print(x_validate0.shape)
     return (x_train0, x_train, y_train, x_validate0, x_validate, y_validate)
 
-
-(x_train0, x_train, y_train, x_validate0, x_validate, y_validate) = loadData()
-
-batchSize = 4
-epochs = 200
-torch.manual_seed(seed0)
-
-dataset_train = TensorDataset(Tensor(x_train), Tensor(y_train))
-train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=batchSize, shuffle=False)
-inputs = 10
-hiddenUnits = 64
-learningRate = 0.0002
-dropoutRate = 0.3
-l2Penalty = 1.0e-3
-net = Net(inputs, hiddenUnits)
-optimizer = optim.Adam(net.parameters(), lr=learningRate,
-                       weight_decay=l2Penalty)
-
-# train network
-losses = []
-accuracies = []
-losses_validate = []
-accuracies_validate = []
-
-PATH = dir + '/cifar_net.pth'
-
-trained = False
-# trained=True
-if not trained:
+def train(epochs, train_loader, x_validate, y_validate, optimizer, net, PATH):
+    losses = []
+    accuracies = []
+    losses_validate = []
+    accuracies_validate = []
+    bestValidationAcc = 0.
+    stateDict = None
     for epoch in range(epochs):  # loop over the dataset multiple times
         running_loss = 0.0
         misClassify = 0
@@ -165,26 +136,22 @@ if not trained:
 
             # print statistics
             running_loss += loss.item()
-            # if i % 50 == 49:    # print every 50 mini-batches
-            #    print('[%d, %5d] loss: %.3f' %
-            #          (epoch + 1, i + 1, running_loss / 50))
-            #    running_loss = 0.0
         accuracy = 1 - misClassify / x_train.shape[0]
         loss = running_loss / x_train.shape[0]
         losses.append(loss)
         accuracies.append(accuracy)
-        print('epoch', epoch, ', loss', loss, 'accuracy', accuracy)
+        print('train: epoch', epoch, ', loss', loss, 'accuracy', accuracy)
 
         loss, accuracy = infer(net, x_validate, y_validate)
-        net.train()  # switch back to train model, in which dropout is turned on
-        print('validate: epoch', epoch, ', loss', loss, 'accuracy', accuracy)
+        if accuracy > bestValidationAcc:
+            bestValidationAcc = accuracy
+            stateDict = net.state_dict()
+            torch.save(stateDict, PATH)
         losses_validate.append(loss)
         accuracies_validate.append(accuracy)
-        # if epoch==117:
-        # if epoch==76: # for without dy
-        # if epoch==72: # for without v_ego
-        if epoch == 137:  # for with dv,dx only
-            torch.save(net.state_dict(), PATH)
+        print('validate: epoch', epoch, ', loss', loss, 'accuracy', accuracy)
+
+        net.train()  # switch back to train model, in which dropout is turned on
 
     plt.figure()
     plt.plot(np.arange(len(losses)) + 1, losses, label='train')
@@ -201,34 +168,69 @@ if not trained:
     plt.legend()
     plt.show()
 
-    print('Finished Training')
-    trained = True
+    np.savetxt(dir + 'svm_10_features_loss_acc.txt', np.array([np.arange(len(losses))+1, losses, losses_validate,
+                                                               accuracies, accuracies_validate]).T, fmt='%1.4f')
+    print('Best validation acc ', max(accuracies_validate))
 
-net.load_state_dict(torch.load(PATH))
-print('load parameters successfully')
+seed0 = 1013899
+seed1 = 1018859
+torch.manual_seed(seed0)
 
-print('for train')
-net.eval()  # turn on eval, switch off dropout layer
-with torch.no_grad():
-    y_predict = net(Tensor(x_train))
-y_predict = y_predict[:,0]
-predict = np.ones_like(y_predict)
-predict[y_predict<0]=-1
-analysis(x_train0, predict, y_train)
-y_train[y_train == -1] = 0.
-predict[predict == -1] = 0.
-vize.visualize_sample(x_train0, y_train)
-vize.visualize_prediction(x_train0, y_train, predict)
+batchSize = 4
+epochs = 200
+hiddenUnits = 64
+learningRate = 0.0002
+dropoutRate = 0.3
+l2Penalty = 1.0e-3
 
-print('for validate')
-with torch.no_grad():
-    y_predict = net(Tensor(x_validate))
-y_predict = y_predict[:,0]
-predict = np.ones_like(y_predict)
-predict[y_predict<0]=-1
-analysis(x_validate0, predict, y_validate)
-y_validate[y_validate == -1] = 0.
-predict[predict == -1] = 0.
-vize.visualize_sample(x_validate0, y_validate)
-vize.visualize_prediction(x_validate0, y_validate, predict)
+inputs = 2
+(x_train0, x_train, y_train, x_validate0, x_validate, y_validate) = loadData()
+mask0 = np.array([0, 1, 3, 6, 7, 8, 9]) # already been chosen to delete
+for i in range(10):
+    if i in mask0: continue
+    mask = np.insert(mask0, -1, i)
+    print('Delete feature ', mask)
+    x_train1 = np.delete(x_train, mask, axis=1)
+    x_validate1 = np.delete(x_validate, mask, axis=1)
+    dataset_train = TensorDataset(Tensor(x_train1), Tensor(y_train))
+    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=batchSize, shuffle=False)
+
+    net = Net(inputs, hiddenUnits)
+    optimizer = optim.Adam(net.parameters(), lr=learningRate,
+                           weight_decay=l2Penalty)
+    dir = '/home/hh/data/ngsim/'
+    PATH = dir + '/svm_10_features_net.pth'
+
+    trained = False
+    # trained=True
+    if not trained:
+        train(epochs, train_loader, x_validate1, y_validate, optimizer, net, PATH)
+
+# net.load_state_dict(torch.load(PATH))
+# print('load parameters successfully')
+
+# print('for train')
+# net.eval()  # turn on eval, switch off dropout layer
+# with torch.no_grad():
+#     y_predict = net(Tensor(x_train))
+# y_predict = y_predict[:,0]
+# predict = np.ones_like(y_predict)
+# predict[y_predict<0]=-1
+# analysis(x_train0, predict, y_train)
+# y_train[y_train == -1] = 0.
+# predict[predict == -1] = 0.
+# vize.visualize_sample(x_train0, y_train)
+# vize.visualize_prediction(x_train0, y_train, predict)
+#
+# print('for validate')
+# with torch.no_grad():
+#     y_predict = net(Tensor(x_validate))
+# y_predict = y_predict[:,0]
+# predict = np.ones_like(y_predict)
+# predict[y_predict<0]=-1
+# analysis(x_validate0, predict, y_validate)
+# y_validate[y_validate == -1] = 0.
+# predict[predict == -1] = 0.
+# vize.visualize_sample(x_validate0, y_validate)
+# vize.visualize_prediction(x_validate0, y_validate, predict)
 
