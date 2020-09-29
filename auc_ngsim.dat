@@ -1,0 +1,36 @@
+x_train 1188 0.6927609427609428 coop rate
+x_validate 396 0.7146464646464646 coop rate
+(1188, 12)
+(396, 12)
+(153509, 4)
+0 0 load parameters successfully
+0 1 load parameters successfully
+0 2 load parameters successfully
+0 3 load parameters successfully
+0 4 load parameters successfully
+run 0, acc 0.8232, auc 0.3842
+1 0 load parameters successfully
+1 1 load parameters successfully
+1 2 load parameters successfully
+1 3 load parameters successfully
+1 4 load parameters successfully
+run 1, acc 0.8308, auc 0.4068
+2 0 load parameters successfully
+2 1 load parameters successfully
+2 2 load parameters successfully
+2 3 load parameters successfully
+2 4 load parameters successfully
+run 2, acc 0.8308, auc 0.3859
+3 0 load parameters successfully
+3 1 load parameters successfully
+3 2 load parameters successfully
+3 3 load parameters successfully
+3 4 load parameters successfully
+run 3, acc 0.8308, auc 0.3917
+4 0 load parameters successfully
+4 1 load parameters successfully
+4 2 load parameters successfully
+4 3 load parameters successfully
+4 4 load parameters successfully
+run 4, acc 0.8283, auc 0.4139
+average of AUC 0.3965, std of of AUC 0.0118

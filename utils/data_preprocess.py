@@ -256,10 +256,131 @@ def visualize_sample(f):
     # plt.show()
 
 
-dir = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
-preprocess()
-f = np.load(dir+'train_origin.npz')
-visualize_sample(f)
-f = np.load(dir+'validate_origin.npz')
-visualize_sample(f)
-plt.show()
+def visualize_ood_sample(x, x_validate, xGenerated):
+    xIndistribution = np.concatenate((x, x_validate))
+    fig, ax = plt.subplots()
+    ax.scatter(xIndistribution[:,0], xIndistribution[:,2], c='blue', marker='o', label='In-distribution')
+    ax.scatter(xGenerated[::10,0], xGenerated[::10,2], c='orange', marker='x', label='OOD')
+    ax.set(xlim=(-30.2, 21.3), ylim=(-50., 100.))
+    plt.legend()
+    plt.show()
+
+
+def get_threshold(x, percentage):
+    from collections import Counter
+    from numpy import linalg as LA
+
+    print('In total, ', x.shape[0], ' samples')
+    minDis = []
+    for i in range(x.shape[0]):
+        mask = np.ones(x.shape[0], dtype=np.bool)
+        mask[i] = False
+        diff = x - x[i]
+        diff = LA.norm(diff, ord=2, axis=1)
+        diff = min(diff[mask])
+        minDis.append(diff)
+    minDis = Counter(minDis)
+    minDis = sorted(minDis.items())
+    dis = []
+    frequency = []
+    count = 0.
+    for p in minDis:
+        dis.append(p[0])
+        count += p[1]
+        frequency.append(count)
+    frequency = np.array(frequency)
+    dis = np.array(dis)
+    frequency /= count
+    np.savez("/home/hh/data/ngsim/in_distribution_sample_minDis_distribution.npz", a=dis, b=frequency)
+    plt.plot(dis, frequency, '-o')
+    plt.axis([0, 3.0, 0., 1.1])
+    plt.ylabel('percentage')
+    plt.xlabel('minimum distance to in-distribution samples')
+    plt.show()
+    for i in range(dis.shape[0]-1, 0, -1):
+        if frequency[i]>percentage and frequency[i-1]<=percentage:
+            minDis = dis[i-1]
+            break
+    print('min dis ', minDis, 'for percentage ', percentage)
+    return minDis
+
+
+def extract_ood(x_train, x_validate, xGenerated, percentage = 0.99):
+    from numpy import linalg as LA
+    minDis = []
+    xInDistribution = np.concatenate((x_train, x_validate))
+    # minDis = get_threshold(xInDistribution, percentage)
+    # minDis = 1.2846  # for percentage 0.98
+    minDis = 1.4967  # for percentage 0.99
+    mask = np.zeros(xGenerated.shape[0], dtype=np.bool)
+    for i in range(xGenerated.shape[0]):
+        diff = xInDistribution - xGenerated[i]
+        diff = LA.norm(diff, ord=2, axis=1)
+        diff = min(diff)
+        if diff >= minDis:
+            mask[i] = True
+        if i % 10000 == 0: print('done for ', i+1, ', distance ', diff )
+    xOOD = xGenerated[mask]
+    print('from ', xGenerated.shape[0], 'samples, extracted ', xOOD.shape[0], 'OOD samples with threshold ', minDis)
+    np.savez("/home/hh/data/ood_sample.npz", a=xOOD)
+
+
+def generate_ood_ngsim():
+    dir = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
+    f = np.load(dir + 'train_origin.npz')
+    data0 = f['a']
+    f = np.load(dir + 'validate_origin.npz')
+    data1 = f['a']
+    data1 = data1[:, 1:]
+    merge_after = data0[:, 0].astype(int)
+    label = data0[:, -1]
+    x = data0[:, 1:-1]
+    feature_selected = [1, 2, 4, 5]
+    x= x [:, feature_selected]
+    x_validate = data1[:, feature_selected]
+    print('dv0 range ', min(x[:,0]), max(x[:,0]))
+    print('dv1 range ', min(x[:,1]), max(x[:,0]))
+    print('dx0 range ', min(x[:,2]), max(x[:,2]))
+    print('dx1 range ', min(x[:,3]), max(x[:,3]))
+    dv0_min = 1.5 * min(x[:,0])
+    dv0_max = 1.5 * max(x[:,0])
+    dv1_min = 1.5 * min(x[:,1])
+    dv1_max = 1.5 * max(x[:,1])
+    detectionRange = 100.
+    pointsInEachDim = 20
+    uniformGrid = False
+    if uniformGrid:
+        dv0 = np.linspace(dv0_min, dv0_max + 0.5, pointsInEachDim)
+        dv1 = np.linspace(dv1_min, dv1_max + 0.5, pointsInEachDim)
+        dx0 = np.linspace(-detectionRange/2., detectionRange + 0.5, pointsInEachDim)
+        dx1 = np.linspace(-detectionRange, detectionRange/2., pointsInEachDim)
+        v0, v1, x0, x1 = np.meshgrid(dv0, dv1, dx0, dx1)
+        xGenerated = np.column_stack([v0.flatten(), v1.flatten(), x0.flatten(), x1.flatten()])
+    else:
+        l = [dv0_min, dv1_min, -detectionRange/2., -detectionRange]
+        h = [dv0_max, dv1_max, detectionRange, detectionRange/2.]
+        xGenerated = np.random.uniform(low=l, high=h, size = (pointsInEachDim**4, 4))
+
+    visualize_ood_sample(x, x_validate, xGenerated)
+    sc_X = StandardScaler()
+    x_train = sc_X.fit_transform(x)
+    print('feature mean ', sc_X.mean_)
+    print('feature std ', np.sqrt(sc_X.var_))
+    x_validate = sc_X.transform(x_validate)
+    xGenerated = sc_X.transform(xGenerated)
+    # minDis, x_ood = ood_label(x_train, x_validate, xGenerated)
+    extract_ood(x_train, x_validate, xGenerated)
+    # f = np.load("/home/hh/data/ngsim/generated_sample_minDis.npz")
+    # minDis = f['a']
+
+
+
+# preprocess()
+generate_ood_ngsim()
+# dir = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
+# dir = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
+# f = np.load(dir+'train_origin.npz')
+# visualize_sample(f)
+# f = np.load(dir+'validate_origin.npz')
+# visualize_sample(f)
+# plt.show()
