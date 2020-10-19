@@ -37,14 +37,6 @@ def plot_feature_selections():
     plt.xlabel('features')
     plt.show()
 
-def plot_acc():
-    acc = np.loadtxt('/home/hh/data/lambda0.txt')
-    plt.figure()
-    plt.plot(acc[:,0], acc[:,1], '-o')
-    plt.axis([0, 1.0, 0.8, 0.85])
-    plt.ylabel('average best validation acc')
-    plt.xlabel('$\sigma $')
-    plt.show()
 
 def plot_save_loss(losses, losses_validate, dir):
     plt.figure()
@@ -52,7 +44,7 @@ def plot_save_loss(losses, losses_validate, dir):
     plt.plot(np.arange(len(losses)) + 1, losses_validate, label='validate')
     plt.xlabel('epoch')
     plt.ylabel('loss')
-    plt.axis([0, 200, 0.2, 1.8])
+    plt.axis([0, 200, 0.2, 0.8])
     plt.legend()
     plt.savefig(dir)
 
@@ -63,7 +55,7 @@ def plot_save_acc(accuracies, accuracies_validate, dir):
     plt.plot(np.arange(len(accuracies)) + 1, accuracies_validate, label='validate')
     plt.xlabel('epoch')
     plt.ylabel('accuracy')
-    plt.axis([0, 200, 0.6, 0.85])
+    plt.axis([0, 200, 0.6, 0.95])
     plt.legend()
     plt.savefig(dir)
 
@@ -148,7 +140,10 @@ def plot_auc_acc_csnn():
     # dir = '/home/hh/data/mean_std_accs_aucs_csnn_2_layers_r20.1.npz'
     # dir = '/home/hh/data/mean_std_accs_aucs_csnn_2_layers_r22.0_maxAlpha0.2.npz'
     # dir = '/home/hh/data/mean_std_accs_aucs_csnn_4_layers_batchNorm.npz'
-    dir = '/home/hh/data/mean_std_accs_aucs_csnn_maxAlpha1.00_4_layers_batchNorm.npz'
+    # dir = '/home/hh/data/mean_std_accs_aucs_csnn_maxAlpha1.00_4_layers_batchNorm.npz'
+    # dir = '/home/hh/data/mean_std_accs_aucs_csnn_maxAlpha{:.2f}_4_layers_batchNorm_noPretrain.npz'.format(0.1)
+    dir = '/home/hh/data/mean_std_accs_aucs_csnn_2_layers_r2{:.1f}_maxAlpha{:.1f}.npz'.format(1., 1.)
+    # dir = '/home/hh/data/mean_std_accs_aucs_csnn_2_csnn_layers_r2{:.1f}_maxAlpha{:.1f}.npz'.format(1., 1.)
     f = np.load(dir)
     AUCs = f['a']
     ACCs = f['c']
@@ -162,23 +157,28 @@ def plot_auc_acc_csnn():
     # outputs = np.array(outputs).reshape(-1,2)
     # print(outputs)
     # np.savetxt('/home/hh/data/acc_auc_csnn_4_layers_batchNorm.csv', outputs, fmt='%.3f')
-    np.savetxt('/home/hh/data/acc_auc_csnn_4_layers_batchNorm_maxAlpha1.00.csv', outputs, fmt='%.3f')
+    # np.savetxt('/home/hh/data/acc_auc_csnn_4_layers_batchNorm_maxAlpha1.00.csv', outputs, fmt='%.3f')
+    # np.savetxt('/home/hh/data/acc_auc_csnn_4_layers_batchNorm_maxAlpha0.1_noPretrain.csv', outputs, fmt='%.3f')
+    np.savetxt('/home/hh/data/acc_auc_csnn_2_layers.csv', outputs, fmt='%.3f')
+    # np.savetxt('/home/hh/data/acc_auc_csnn_2_csnn_layers_batchNorm.csv', outputs, fmt='%.3f')
     plt.plot(ALPHAs, ACCs, color='darkorange', lw=2, label='accuracy')
     plt.plot(ALPHAs, AUCs, color='blue', lw=2, label='auc')
-    plt.xlim([0.0, 1.0])
-    # plt.xlim([0.0, .05])
+    # plt.xlim([0.0, 1.0])
+    plt.xlim([0.0, 1.])
     plt.ylim([0.0, 1.])
     plt.xlabel('$\\alpha$')
     plt.ylabel('accuracy, AUC')
     plt.legend(loc="lower right")
-    # dir = '/home/hh/data/acc_auc_csnn_2_layers.png'
+    dir = '/home/hh/data/acc_auc_csnn_2_layers.png'
     # dir = '/home/hh/data/acc_auc_csnn_2_layers_trim.png'
     # dir = '/home/hh/data/acc_auc_csnn_2_layers_r22.0.png'
     # dir = '/home/hh/data/acc_auc_csnn_2_layers_r20.1.png'
     # dir = '/home/hh/data/acc_auc_csnn_2_layers_r22.0_maxAlpha0.2.png'
-    dir = '/home/hh/data/acc_auc_csnn_4_layers_batchNorm_maxAlpha1.00.png'
+    # dir = '/home/hh/data/acc_auc_csnn_4_layers_batchNorm_maxAlpha1.00.png'
+    # dir = '/home/hh/data/acc_auc_csnn_4_layers_batchNorm_maxAlpha0.1_noPretrain.png'
+    # dir = '/home/hh/data/acc_auc_csnn_2_csnn_layers_batchNorm_maxAlpha1.00.png'
     plt.savefig(dir)
-    # plt.show()
+    #plt.show()
 
 def plot_auc_acc_csnn_multiple_r2():
     aucs = []
@@ -262,10 +262,133 @@ def plot_layer_effect():
     # plt.show()
     plt.savefig(dir)
 
-# plot_layer_effect()
-# plot_feature_selections()
-# plot_acc()
-# plot_auc()
-# plot_func()
-plot_auc_acc_csnn()
-# plot_auc_acc_csnn_multiple_r2()
+def plot_pretrain():
+    # dir0 = '/home/hh/data/train_us80_validate_us101/pre_train_acc_loss_'
+    dir0 = '/home/hh/data/train_us101_validate_us80/pre_train_acc_loss_'
+    nets = ['mlp3', 'mlp4', 'net3', 'net4']
+    accs = []
+    accs_validate = []
+    losses = []
+    losses_validate = []
+    for net in nets:
+        dir = dir0+net+'.npz'
+        f = np.load(dir)
+        accs.append(f['a'])
+        accs_validate.append(f['e'])
+        losses.append(f['c'])
+        losses_validate.append(f['g'])
+    epochs = np.arange(accs[0].shape[0])
+    plt.figure()
+    for i in range(len(nets)):
+        plt.plot(epochs, accs[i], lw=2, label='train_'+nets[i])
+        plt.plot(epochs, accs_validate[i], lw=2, label='validate_'+nets[i])
+    plt.axis([0, 200, 0.5, 1.])
+    plt.xlabel('epoch')
+    plt.ylabel('accuracy')
+    dir = dir0+'pre_train_acc.png'
+    # plt.show()
+    plt.legend()
+    plt.savefig(dir)
+    print('best validate acc ', np.max(accs_validate, axis=1))
+
+    plt.figure()
+    for i in range(len(nets)):
+        plt.plot(epochs, losses[i], lw=2, label='train_'+nets[i])
+        plt.plot(epochs, losses_validate[i], lw=2, label='validate_'+nets[i])
+    plt.axis([0, 200, 0., 0.8])
+    plt.xlabel('epoch')
+    plt.ylabel('loss')
+    dir = dir0+'pre_train_loss.png'
+    # plt.show()
+    plt.legend()
+    plt.savefig(dir)
+
+
+def plot_train():
+    # dir0 = '/home/hh/data/train_us80_validate_us101/mean_std_accs_aucs_'
+    dir0 = '/home/hh/data/train_us101_validate_us80/mean_std_accs_aucs_'
+    nets = ['net3', 'net4']
+    aucs =[]
+    accs = []
+    accs_validate = []
+    losses = []
+    losses_validate = []
+    alphas =  None
+    for net in nets:
+        dir = dir0+net+'.npz'
+        f = np.load(dir)
+        aucs.append(f['a'])
+        accs.append(f['c'])
+        accs_validate.append(f['e'])
+        losses.append(f['g'])
+        losses_validate.append(f['i'])
+        if alphas is None:
+            alphas = f['k']
+    epochs = np.arange(accs[0].shape[0])
+    plt.figure()
+    for i in range(len(nets)):
+        plt.plot(alphas, accs[i], lw=2, label='train_'+nets[i])
+        plt.plot(alphas, accs_validate[i], lw=2, label='validate_'+nets[i])
+    plt.axis([0, 1., 0.5, 1.])
+    plt.xlabel('$\\alpha$')
+    plt.ylabel('accuracy')
+    dir = dir0+'train_acc.png'
+    # plt.show()
+    plt.legend()
+    plt.savefig(dir)
+    print('best validate acc ', np.max(accs_validate, axis=1))
+
+    plt.figure()
+    for i in range(len(nets)):
+        plt.plot(alphas, losses[i], lw=2, label='train_'+nets[i])
+        plt.plot(alphas, losses_validate[i], lw=2, label='validate_'+nets[i])
+    plt.axis([0, 1., 0., 0.8])
+    plt.xlabel('$\\alpha$')
+    plt.ylabel('loss')
+    dir = dir0+'train_loss.png'
+    # plt.show()
+    plt.legend()
+    plt.savefig(dir)
+
+
+    plt.figure()
+    for i in range(len(nets)):
+        plt.plot(alphas, accs_validate[i], lw=2, label='acc_'+nets[i])
+        plt.plot(alphas, aucs[i], lw=2, label='auc_' + nets[i])
+    for i in range(aucs[0].shape[0]):
+        print(accs_validate[0][i], aucs[0][i])
+    print('for net 2')
+    for i in range(aucs[0].shape[0]):
+        print(accs_validate[1][i], aucs[1][i])
+    plt.axis([0, 1., 0., 1.])
+    plt.xlabel('$\\alpha$')
+    plt.ylabel('accuracy, auc')
+    dir = dir0 + 'train_acc_auc.png'
+    # plt.show()
+    plt.legend()
+    plt.savefig(dir)
+
+
+def plot_min_distance_within_dataset():
+    dir = '/home/hh/data/ngsim/min_dis_within_us80.npz'
+    f = np.load(dir)
+    dis_us80 = f['a']
+    frequency_us80 = f['b']
+
+    dir = '/home/hh/data/ngsim/min_dis_within_us101.npz'
+    f = np.load(dir)
+    dis_us101 = f['a']
+    frequency_us101 = f['b']
+
+    plt.plot(dis_us80, frequency_us80, label='us80')
+    plt.plot(dis_us101, frequency_us101, label='us101')
+    plt.axis([0, 3.0, 0., 1.1])
+    plt.ylabel('percentage')
+    plt.xlabel('minimum distance to in-distribution samples')
+    plt.legend()
+    plt.show()
+
+
+# plot_min_distance_within_dataset()
+# plot_pretrain()
+# plot_train()

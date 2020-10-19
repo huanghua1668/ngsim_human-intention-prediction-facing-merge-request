@@ -63,13 +63,23 @@ carOnly = True
 observeLength = 5
 t = 80  # lane change decision(abortion here) make time
 
-dir0 = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
+# for i-80
+# dir0 = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
 # dir = dir0 + '0400pm-0415pm/'
 # data = np.loadtxt(dir + 'trajectories-0400-0415.txt')
 # dir = dir0 + '0500pm-0515pm/'
 # data = np.loadtxt(dir + 'trajectories-0500-0515.txt')
-dir = dir0 + '0515pm-0530pm/'
-data = np.loadtxt(dir + 'trajectories-0515-0530.txt')
+# dir = dir0 + '0515pm-0530pm/'
+# data = np.loadtxt(dir + 'trajectories-0515-0530.txt')
+
+# for i-101
+dir0 = '/home/hh/ngsim/US-101-LosAngeles-CA/us-101-vehicle-trajectory-data/vehicle-trajectory-data/'
+# dir = dir0 + '0750am-0805am/'
+# data = np.loadtxt(dir + 'trajectories-0750am-0805am.txt')
+# dir = dir0 + '0805am-0820am/'
+# data = np.loadtxt(dir + 'trajectories-0805am-0820am.txt')
+dir = dir0 + '0820am-0835am/'
+data = np.loadtxt(dir + 'trajectories-0820am-0835am.txt')
 
 f_lane_change_index = open(dir+'lane_changes_merge_after_index.csv', 'w')
 f_lane_change = open(dir+'lane_changes_merge_after.csv', 'w')

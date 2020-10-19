@@ -202,12 +202,22 @@ def extract_snapshots_3seconds():
 
 def extract_samples_modified_loss_function():
     vehicleLength = 5.
-    dir0 = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
-    dir = dir0 + '0400pm-0415pm/'
+    maxVelDiff = 3.
+    # for i-80
+    # dir0 = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
+    # dir = dir0 + '0400pm-0415pm/'
     # dir = dir0 + '0500pm-0515pm/'
     # dir = dir0 + '0515pm-0530pm/'
+
+    # for i-101
+    dir0 = '/home/hh/ngsim/US-101-LosAngeles-CA/us-101-vehicle-trajectory-data/vehicle-trajectory-data/'
+    # dir = dir0 + '0750am-0805am/'
+    # dir = dir0 + '0805am-0820am/'
+    dir = dir0 + '0820am-0835am/'
+
     data = np.genfromtxt(dir+'lane_changes.csv', delimiter=',')
     output = open(dir+'samples_snapshots.csv', 'w')
+
     writer = csv.writer(output)
     count = 0
     minTimeBeforeLC = 1.5  # from decision to cross lane divider
@@ -233,7 +243,17 @@ def extract_samples_modified_loss_function():
         while (start0 < end0 and data[end0, -5] == 0.): end0 -= 1
         if data[end0, 1] < minTimeAfterLC: continue
         if data[end0, 3] - data[end0, 15] < vehicleLength: continue
-        print(count, 'after trim ', i, start0, end0, end0 - start0, data[start0, 1], data[end0, 1])
+        # print(count, 'after trim ', i, start0, end0, end0 - start0, data[start0, 1], data[end0, 1])
+
+        # sanity check, lag vehicle should not have sharpe velocity change
+        rational = True
+        for j in range(start0+1, end0+1):
+            if np.abs(data[j,16]-data[j-1,16])>maxVelDiff:
+                print('huge velocity diff {:.3f} for lane change {} at {}'.format(data[j,16]-data[j-1,16], i, j))
+                rational = False
+                break
+        if not rational:
+            continue
 
         # handle missing vehicle values
         for j in range(start0, start0 + observationLength):
@@ -243,16 +263,19 @@ def extract_samples_modified_loss_function():
                 data[j, 10] = 0.5 * laneWidth
                 if data[j, 14] < 0.:
                     data[j, 10] *= -1.
-                print('no leading vehilce at ', j)
+                # print('no leading vehilce at ', j)
             if data[j, 7] == 0:  # no corresponding obstacle for leading in old lane
                 data[j, 8] = data[j, 4]
                 data[j, 7] = data[j, 3] + detectionRange
                 data[j, 6] = 0.5 * laneWidth
                 if data[j, 2] < 0.:
                     data[j, 6] *= -1.
-                print('no leading vehilce at original lane at ', j)
+                # print('no leading vehilce at original lane at ', j)
 
         j = start0 + observationLength -1
+        # 0 for lag vehicle in target lane
+        # 1 for front vehicle in target lane
+        # 2 for front vehicle in original lane
         dx0 = data[j, 3] - data[j, 15]
         dx1 = data[j, 3] - data[j, 11]
         dx2 = data[j, 3] - data[j, 7]
@@ -325,8 +348,8 @@ def extract_samples_modified_loss_function_relabel_as_change_in_distance():
             y = 0
 
         # while data[end0,1]  > -2.:   end0-=1
-        print(count, 'after trim ', i, start0, end0, end0 - start0,
-              data[start0, 1], data[end0, 1])
+        # print(count, 'after trim ', i, start0, end0, end0 - start0,
+        #       data[start0, 1], data[end0, 1])
         # for j in range(start0, end0+1):
         for j in range(start0, start0 + 10):
             # handle missing vehicle values
@@ -397,11 +420,11 @@ def extract_sample_multiple_snapshot():
         while (start0 < end0 and data[end0, -5] == 0.): end0 -= 1
         if data[end0, 1] < 2.: continue
         # lag disappear at time shorter than 2 seconds after cross lane division
-        print('before trim ', i, start0, end0, end0 - start0)
+        # print('before trim ', i, start0, end0, end0 - start0)
         while data[start0, 1] < -3.5: start0 += 1
         # while data[end0,1]  > 3.5:   end0-=1
         if data[end0, 3] - data[end0, 15] < vehicleLength: continue
-        print('after trim ', i, start0, end0, end0 - start0)
+        # print('after trim ', i, start0, end0, end0 - start0)
 
         while data[start0, 1] <= -3.:
             du0 = data[start0, 4] - data[start0, 16]
