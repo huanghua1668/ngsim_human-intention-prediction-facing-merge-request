@@ -14,7 +14,7 @@ from utils.plot_utils import plot_save_acc_nzs_mmcs
 from utils.plot_utils import plot_save_roc
 from utils.data_preprocess import load_data
 
-from models import nnz, active, step, eval_step, eval_combined, csnn, Net2, Net3, Net4, MLP3, MLP4, pre_train
+from models import nnz, active, step, eval_step, eval_combined_score_functions, Net3, Net4, MLP3, MLP4, pre_train
 
 # ngsim data
 (x_train, y_train, x_validate, y_validate, x_ood) = load_data()
@@ -55,17 +55,15 @@ runs = 5
 r2 = 1.
 maxAlpha = 1.
 
-trained = True
 bias = False
-pretrained = True
-outputDir='/home/hh/data/csnn/'
+outputDir='/home/hh/data/score_function/'
 
 for run in range(runs):
     np.random.seed(seeds[run])
     torch.manual_seed(seeds[run])
     dl_train = torch.utils.data.DataLoader(ds_train, batch_size=batchSize, shuffle=True, drop_last=False)
     dl_test = torch.utils.data.DataLoader(ds_test, batch_size=x_validate.shape[0], shuffle=False)
-    model = Net4(inputs, hiddenUnits)
+    model = Net3(inputs, hiddenUnits)
     optimizer = torch.optim.Adam(model.parameters(), lr=learningRate,
                                  weight_decay=l2Penalty)
     pre_train(model, optimizer, dl_train, dl_test, x_train, y_train, x_validate, y_validate, run, outputDir, maxEpoch=10)
@@ -130,12 +128,15 @@ for run in range(runs):
             alphas.append(alpha)
             mmcs.append(mmc)
             nzs.append(nz)
-            uncertainties = eval_combined(model, dl_combined, alpha, r2, learnable_r=True)
-            falsePositiveRate, truePositiveRate, _= roc_curve(label_ood, -uncertainties)
-            AUC = auc(falsePositiveRate.astype(np.float32), truePositiveRate.astype(np.float32))
+            # uncertainties = eval_combined(model, dl_combined, alpha, r2)
+            uncertainties = eval_combined_score_functions(model, dl_combined, alpha, r2)
+            AUC = []
+            for uncertainty in uncertainties:
+                falsePositiveRate, truePositiveRate, _= roc_curve(label_ood, -uncertainty)
+                AUC.append(auc(falsePositiveRate.astype(np.float32), truePositiveRate.astype(np.float32)))
             aucs.append(AUC)
-            print('epoch {}, alpha {:.2f}, r2 {:.1f}, nz {:.3f}, train {:.3f}, test {:.3f}, auroc {:.3f}'
-              .format(epoch, alpha, r2, 1.-nz,accuracy,testacc, AUC))
+            print('epoch {}, alpha {:.2f}, r2 {:.1f}, nz {:.3f}, train {:.3f}, test {:.3f}, auroc {:.4f}, {:.4f}, {:.4f}, {:.4f}'
+              .format(epoch, alpha, r2, 1.-nz,accuracy,testacc, AUC[0], AUC[1], AUC[2], AUC[3]))
 
         # eliminate dead nodes
         # if (   (epoch<200 and (epoch + 1) % (epochs / 100) == 0)
@@ -147,8 +148,8 @@ for run in range(runs):
 
     plot_save_loss(losses, losses_validate, outputDir+'/loss_run{}.png'.format(run))
     plot_save_acc(accuracies, accuracies_validate, outputDir+'/acc_run{}.png'.format(run))
-    plot_save_acc_nzs_mmcs(alphas, accuracies_validate, nzs, aucs,
-                           outputDir+'/acc_nzs_mmcs_run{}.png'.format(run))
+    # plot_save_acc_nzs_mmcs(alphas, accuracies_validate, nzs, aucs,
+    #                        outputDir+'/acc_nzs_mmcs_run{}.png'.format(run))
 
     bestValidationAccs.append(max(accuracies_validate))
     AUCs.append(aucs)
@@ -158,7 +159,7 @@ AUCs = np.array(AUCs)
 ACCs = np.array(ACCs)
 print('mean and std of best validation acc in {} runs: {:.4f}, {:.4f}'
       .format(runs, np.mean(np.array(bestValidationAccs)), np.std(np.array(bestValidationAccs))))
-dir = outputDir + '/mean_std_accs_aucs_net4.npz'
+dir = outputDir + '/mean_std_accs_aucs.npz'
 np.savez(dir, a=np.mean(AUCs, axis=0), b=np.std(AUCs, axis=0),
               c=np.mean(ACCs, axis=0), d=np.std(ACCs, axis=0),
               e=ALPHAs)

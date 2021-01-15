@@ -109,24 +109,49 @@ def preprocess():
     sc_X = StandardScaler()
     data_train = data[:int(sz * trainRatio)]
     dir = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
-    np.savez(dir + "train_origin.npz", a=data_train)
+    # np.savez(dir + "train_origin.npz", a=data_train)
+    np.savez(dir + "train_origin_cleaned.npz", a=data_train)
     x_train = data_train[:, 1:-1]
     y_train = data_train[:, -1].astype(int)
     x_train = sc_X.fit_transform(x_train)
-    np.savez(dir + "train_normalized.npz", a=x_train, b=y_train)
+    # np.savez(dir + "train_normalized.npz", a=x_train, b=y_train)
+    np.savez(dir + "train_normalized_cleaned.npz", a=x_train, b=y_train)
 
     data_validate = data[int(sz * trainRatio):]
-    np.savez(dir + "validate_origin.npz", a=data_validate)
+    # np.savez(dir + "validate_origin.npz", a=data_validate)
+    np.savez(dir + "validate_origin_cleaned.npz", a=data_validate)
     x_validate = data_validate[:, 1:-1]
     x_validate = sc_X.transform(x_validate)
     y_validate = data_validate[:, -1].astype(int)
-    np.savez(dir + "validate_normalized.npz", a=x_validate, b=y_validate)
+    # np.savez(dir + "validate_normalized.npz", a=x_validate, b=y_validate)
+    np.savez(dir + "validate_normalized_cleaned.npz", a=x_validate, b=y_validate)
 
     print(y_train.shape[0], ' trainning samples, and ',
           np.mean(y_train) * 100, '% positives')
     print(y_validate.shape[0], ' validate samples, and ',
           np.mean(y_validate) * 100, '% positives')
     return x_train, x_validate, y_train, y_validate, sc_X
+
+
+def load_data():
+    mask = np.array([1, 2, 4, 5]) # already been chosen to delete
+    # dir = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
+    dir = '/home/hh/Dropbox/Hua/csnn/data/'
+    f = np.load(dir + "train.npz")
+    # f = np.load(dir + "train_normalized.npz")
+    x_train = f['a']
+    # x_train = x_train[:, mask]
+    y_train = f['b']
+    # f = np.load(dir + "validate_normalized_cleaned.npz")
+    f = np.load(dir + "validate.npz")
+    x_validate = f['a']
+    # x_validate = x_validate[:, mask]
+    y_validate = f['b']
+    f = np.load(dir + "ood_sample.npz")
+    # f = np.load("/home/hh/data/ood_sample_cleaned.npz")
+    # f = np.load("/home/hh/data/ood_sample.npz")
+    xOOD = f['a']
+    return x_train, y_train, x_validate, y_validate, xOOD
 
 
 def cal_min_dis(a, b):
@@ -341,61 +366,63 @@ def inspect_abnormal():
         # writer.writerow(np.around(sample, decimals=3))
         count += 1
 
-def preprocess_multiple():
-    # the data, split between train and test sets
-    data0 = np.genfromtxt('0400pm-0415pm/samples_multiple_snapshot.csv', delimiter=',')
-    data1 = np.genfromtxt('0500pm-0515pm/samples_multiple_snapshot.csv', delimiter=',')
-    data2 = np.genfromtxt('0515pm-0530pm/samples_multiple_snapshot.csv', delimiter=',')
-    data = np.vstack((data0, data1))
-    data = np.vstack((data, data2))
-    ys = data[:, -1]
-    print(ys.shape[0], ' samples, and ', np.sum(ys) / ys.shape[0] * 100, '% positives')
+# def preprocess_multiple():
+#     # the data, split between train and test sets
+#     data0 = np.genfromtxt('0400pm-0415pm/samples_multiple_snapshot.csv', delimiter=',')
+#     data1 = np.genfromtxt('0500pm-0515pm/samples_multiple_snapshot.csv', delimiter=',')
+#     data2 = np.genfromtxt('0515pm-0530pm/samples_multiple_snapshot.csv', delimiter=',')
+#     data = np.vstack((data0, data1))
+#     data = np.vstack((data, data2))
+#     ys = data[:, -1]
+#     print(ys.shape[0], ' samples, and ', np.sum(ys) / ys.shape[0] * 100, '% positives')
+#
+#     data_train = []
+#     data_validate = []
+#     data_test = []
+#     mixture = False
+#     for i in range(data.shape[0]):
+#         if not mixture:
+#             laneChange = int(data[i, 0])
+#             if laneChange % 5 < 3:
+#                 data_train.append(data[i, 1:])
+#             elif laneChange % 5 == 3:
+#                 data_validate.append(data[i, 1:])
+#             else:
+#                 data_test.append(data[i, 1:])
+#         else:
+#             if i % 5 < 3:
+#                 data_train.append(data[i, 1:])
+#             elif i % 5 == 3:
+#                 data_validate.append(data[i, 1:])
+#             else:
+#                 data_test.append(data[i, 1:])
+#     sc_X = StandardScaler()
+#     data_train = np.vstack(data_train)
+#     x_train = data_train[:, :-1]
+#     x_train = sc_X.fit_transform(x_train)
+#     y_train = data_train[:, -1].astype(int)
+#
+#     data_validate = np.vstack(data_validate)
+#     x_validate = data_validate[:, :-1]
+#     x_validate = sc_X.transform(x_validate)
+#     y_validate = data_validate[:, -1].astype(int)
+#
+#     data_test = np.vstack(data_test)
+#     x_test = data_test[:, :-1]
+#     x_test = sc_X.transform(x_test)
+#     y_test = data_test[:, -1].astype(int)
+#     print(y_train.shape[0], ' trainning samples, and ',
+#           np.sum(y_train) / y_train.shape[0] * 100, '% positives')
+#     print(y_validate.shape[0], ' validate samples, and ',
+#           np.sum(y_validate) / y_validate.shape[0] * 100, '% positives')
+#     print(y_test.shape[0], ' test samples, and ',
+#           np.sum(y_test) / y_test.shape[0] * 100, '% positives')
+#     return x_train, x_validate, x_test, y_train, y_validate, y_test
 
-    data_train = []
-    data_validate = []
-    data_test = []
-    mixture = False
-    for i in range(data.shape[0]):
-        if not mixture:
-            laneChange = int(data[i, 0])
-            if laneChange % 5 < 3:
-                data_train.append(data[i, 1:])
-            elif laneChange % 5 == 3:
-                data_validate.append(data[i, 1:])
-            else:
-                data_test.append(data[i, 1:])
-        else:
-            if i % 5 < 3:
-                data_train.append(data[i, 1:])
-            elif i % 5 == 3:
-                data_validate.append(data[i, 1:])
-            else:
-                data_test.append(data[i, 1:])
-    sc_X = StandardScaler()
-    data_train = np.vstack(data_train)
-    x_train = data_train[:, :-1]
-    x_train = sc_X.fit_transform(x_train)
-    y_train = data_train[:, -1].astype(int)
 
-    data_validate = np.vstack(data_validate)
-    x_validate = data_validate[:, :-1]
-    x_validate = sc_X.transform(x_validate)
-    y_validate = data_validate[:, -1].astype(int)
-
-    data_test = np.vstack(data_test)
-    x_test = data_test[:, :-1]
-    x_test = sc_X.transform(x_test)
-    y_test = data_test[:, -1].astype(int)
-    print(y_train.shape[0], ' trainning samples, and ',
-          np.sum(y_train) / y_train.shape[0] * 100, '% positives')
-    print(y_validate.shape[0], ' validate samples, and ',
-          np.sum(y_validate) / y_validate.shape[0] * 100, '% positives')
-    print(y_test.shape[0], ' test samples, and ',
-          np.sum(y_test) / y_test.shape[0] * 100, '% positives')
-    return x_train, x_validate, x_test, y_train, y_validate, y_test
-
-
-def visualize_sample(f):
+def visualize_sample():
+    dir = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
+    f = np.load(dir + 'us80.npz')
     # preprocess()
     data0 = f['a']
     fig, ax = plt.subplots()
@@ -406,19 +433,40 @@ def visualize_sample(f):
     data00 = data[np.logical_and(label == 0, merge_after == 0)]
     data01 = data[np.logical_and(label == 0, merge_after == 1)]
     data1 = data[label == 1]
-    ax.scatter(data00[:, 1], data00[:, 4], c='black', marker='x', label='adv(merge infront)')
-    ax.scatter(data01[:, 1], data01[:, 4], c='red', marker='x', label='adv(merge after)')
+    ax.scatter(data00[:, 1], data00[:, 4], c='black', marker='x', label='adv (merge infront)')
+    ax.scatter(data01[:, 1], data01[:, 4], c='red', marker='x', label='adv (merge after)')
     ax.scatter(data1[:, 1], data1[:, 4], c='blue', marker='o', label='coop')
     # print(data00[:10, [1,4]])
 
-    plt.xlabel('$\Delta v$')
-    plt.ylabel('$\Delta x$')
+    plt.ylabel('$\Delta x \enspace [m]$', fontsize=25)
+    plt.xlabel('$\Delta v \enspace [m/s^2]$', fontsize=25)
     plt.axis([-15, 15, -50, 100])
-    # plt.axis([-7, 2, 0, 50])
-    # plt.axis([-10, 10, -10, 50])
-    ax.legend()
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
+    plt.legend(fontsize=25)
+    ax.legend(prop={'size': 25})
     # plt.show()
 
+
+def visualize_sample_labeled_by_dx():
+    dir = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
+    records0=np.genfromtxt(dir+'0400pm-0415pm/samples_relabeled_by_decrease_in_dx.csv', delimiter=',')
+    records1=np.genfromtxt(dir+'0500pm-0515pm/samples_relabeled_by_decrease_in_dx.csv', delimiter=',')
+    records=np.concatenate((records0, records1), axis=0)
+
+    samples0=records[records[:,-1]==0]
+    samples1=records[records[:,-1]==1]
+    plt.scatter(samples0[:,1], samples0[:,0], color="black", marker='x',
+            label='adv')
+    plt.scatter(samples1[:,1], samples1[:,0], color="blue", marker='o',
+            label='coop')
+    plt.ylabel('$\Delta x \enspace [m]$', fontsize=25)
+    plt.xlabel('$\Delta v \enspace [m/s^2]$', fontsize=25)
+    plt.axis([-15, 15, -50, 100])
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
+    plt.legend(fontsize=25)
+    plt.show()
 
 def visualize_ood_sample(x, x_validate, xGenerated):
     xIndistribution = np.concatenate((x, x_validate))
@@ -443,6 +491,8 @@ def get_threshold(x, percentage, dir):
         diff = LA.norm(diff, ord=2, axis=1)
         diff = min(diff[mask])
         minDis.append(diff)
+    minDis0 = minDis.copy()
+
     minDis = Counter(minDis)
     minDis = sorted(minDis.items())
     dis = []
@@ -455,18 +505,19 @@ def get_threshold(x, percentage, dir):
     frequency = np.array(frequency)
     dis = np.array(dis)
     frequency /= count
-    np.savez(dir, a=dis, b=frequency)
-    plt.plot(dis, frequency, '-o')
-    plt.axis([0, 3.0, 0., 1.1])
-    plt.ylabel('percentage')
-    plt.xlabel('minimum distance to in-distribution samples')
-    plt.show()
+    # np.savez(dir, a=dis, b=frequency)
+    # plt.plot(dis, frequency, '-o')
+    # plt.axis([0, 3.0, 0., 1.1])
+    # plt.ylabel('percentage')
+    # plt.xlabel('minimum distance to in-distribution samples')
+    # plt.show()
     for i in range(dis.shape[0]-1, 0, -1):
         if frequency[i]>percentage and frequency[i-1]<=percentage:
             minDis = dis[i-1]
             break
     print('min dis ', minDis, 'for percentage ', percentage)
-    return minDis
+    oodLabel = minDis0>=minDis
+    return minDis, oodLabel
 
 
 def extract_ood(xInDistribution, xGenerated, minDis):
@@ -485,14 +536,18 @@ def extract_ood(xInDistribution, xGenerated, minDis):
     xOOD = xGenerated[mask]
     print('from ', xGenerated.shape[0], 'samples, extracted ', xOOD.shape[0], 'OOD samples with threshold ', minDis)
     # np.savez("/home/hh/data/ood_sample.npz", a=xOOD)
-    return xOOD
+    # np.savez("/home/hh/data/ood_sample_cleaned.npz", a=xOOD)
+    return mask, xOOD
 
 
 def generate_ood_ngsim():
+    percentage = 0.99
     dir = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
-    f = np.load(dir + 'train_origin.npz')
+    # f = np.load(dir + 'train_origin.npz')
+    f = np.load(dir + 'train_origin_cleaned.npz')
     data0 = f['a']
-    f = np.load(dir + 'validate_origin.npz')
+    # f = np.load(dir + 'validate_origin.npz')
+    f = np.load(dir + 'validate_origin_cleaned.npz')
     data1 = f['a']
     data1 = data1[:, 1:]
     merge_after = data0[:, 0].astype(int)
@@ -525,6 +580,9 @@ def generate_ood_ngsim():
         xGenerated = np.random.uniform(low=l, high=h, size = (pointsInEachDim**4, 4))
 
     visualize_ood_sample(x, x_validate, xGenerated)
+    x0 = x.copy()
+    x_validate0 = x_validate.copy()
+    xGenerated0 = xGenerated.copy()
     sc_X = StandardScaler()
     x_train = sc_X.fit_transform(x)
     print('feature mean ', sc_X.mean_)
@@ -532,15 +590,24 @@ def generate_ood_ngsim():
     x_validate = sc_X.transform(x_validate)
     xGenerated = sc_X.transform(xGenerated)
     # minDis, x_ood = ood_label(x_train, x_validate, xGenerated)
+    minDis, _ = get_threshold(x_train, percentage, dir+'min_dis.png')
     xInDistribution = np.concatenate((x_train, x_validate))
-    extract_ood(xInDistribution, xGenerated, minDis = 1.4967)
+    xInDistribution0 = np.concatenate((x0, x_validate0))
+    # extract_ood(xInDistribution, xGenerated, minDis = 1.4967)
+    mask, x_ood = extract_ood(xInDistribution, xGenerated, minDis)
     # f = np.load("/home/hh/data/ngsim/generated_sample_minDis.npz")
     # minDis = f['a']
+    visualize_ood_sample(x0, x_validate0, xGenerated0[mask])
+    print('for ood:')
+    print('dv0 range ', min(xGenerated0[mask][:,0]), max(xGenerated0[mask][:,0]))
+    print('dv1 range ', min(xGenerated0[mask][:,1]), max(xGenerated0[mask][:,0]))
+    print('dx0 range ', min(xGenerated0[mask][:,2]), max(xGenerated0[mask][:,2]))
+    print('dx1 range ', min(xGenerated0[mask][:,3]), max(xGenerated0[mask][:,3]))
 
 
 def generate_ood(x):
     '''input x, output generated OOD;
-       not normalized '''
+       should not be normalized '''
     print('dv0 range ', min(x[:,0]), max(x[:,0]))
     print('dv1 range ', min(x[:,1]), max(x[:,0]))
     print('dx0 range ', min(x[:,2]), max(x[:,2]))
@@ -572,78 +639,102 @@ def prepare_validate_and_generate_ood():
     np.random.seed(0)
 
     dir = '/home/hh/data/ngsim/'
-    # np.savez(dir + "min_dis.npz", a=us80, b=us101, c=minDis, d=dis_us80_to_us101, e=dis_us101_to_us80)
-    f = np.load(dir + "min_dis.npz")
-    minDis = f['c']
-    dis_us101_to_us80 = f['e']
-    dis_us80_to_us101 = f['d']
-
-    dir = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
-    f = np.load(dir + 'us80.npz')
+    f = np.load(dir + "us80.npz")
     us80 = f['a']
-    us80_x = us80[:, 1:-1]
-    us80_x = us80_x[:, featureMask]
-    us80_y = us80[:, -1]
-
-    dir = '/home/hh/ngsim/US-101-LosAngeles-CA/us-101-vehicle-trajectory-data/vehicle-trajectory-data/'
-    f = np.load(dir + 'us101.npz')
+    f = np.load(dir + "us101.npz")
     us101 = f['a']
-    us101_x = us101[:, 1:-1]
-    us101_x = us101_x[:, featureMask]
-    us101_y = us101[:, -1]
-
-    # get the OOD mask
-    mask_validate_us101 = dis_us101_to_us80 <= minDis[0]
-    mask_validate_us80  = dis_us80_to_us101 <= minDis[1]
-
-    # now generate the corresponding OOD
-    # for train with us80
-    us80_ood = generate_ood(us80_x)
-    # scale
+    print('us80: ', us80.shape[0], ' samples,', np.sum(us80[:,-1]), 'coop', np.sum(us80[:,0]), 'merge after')
+    print('us101: ', us101.shape[0], ' samples,', np.sum(us101[:,-1]), 'coop', np.sum(us101[:,0]), 'merge after')
+    combined = np.concatenate((us80, us101))
+    np.random.seed(primeNumber)
+    np.random.shuffle(combined)
+    x_combined = combined[:, 1:-1]
+    y_combined = combined[:, -1]
+    x_combined = x_combined[:, featureMask]
+    x_combined0 = x_combined.copy()
     sc_X = StandardScaler()
-    x_train = sc_X.fit_transform(us80_x)
-    print('feature mean ', sc_X.mean_)
-    print('feature std ', np.sqrt(sc_X.var_))
-    us80_ood = sc_X.transform(us80_ood)
+    x_combined = sc_X.fit_transform(x_combined)
+    # need to scale first before any calculating of distance
 
-    dir = '/home/hh/data/train_us80_validate_us101/'
-    minDis = get_threshold(x_train, percentage, dir+'min_dis.png')
-    xGenerated = extract_ood(x_train, us80_ood, minDis)
-    x_validate = sc_X.transform(us101_x)
-    x_ood = np.concatenate((xGenerated, x_validate[~mask_validate_us101]))
-    np.savez(dir+'us80_train_validate_ood.npz', a=x_train, b=x_validate[mask_validate_us101], c=x_ood,
-             d=us80_y, e=us101_y[mask_validate_us101])
+    # clean data, 99% dis to in-dis, 1% to OOD
+    minDis, oodLabel = get_threshold(x_combined, percentage, dir)
+    x_inDis = x_combined[~oodLabel]
+    y_inDis = y_combined[~oodLabel]
+    x_ood = x_combined[oodLabel]
+    print('total sample ', x_combined.shape[0], ', in dis ', x_inDis.shape[0], ', ood ', x_ood.shape[0])
 
-    # for train with us101
-    us101_ood = generate_ood(us101_x)
-    # scale
-    sc_X = StandardScaler()
-    x_train = sc_X.fit_transform(us101_x)
-    print('feature mean ', sc_X.mean_)
-    print('feature std ', np.sqrt(sc_X.var_))
-    us101_ood = sc_X.transform(us101_ood)
+    # generate ood samples
+    combined_ood = generate_ood(x_combined0[~oodLabel])
+    combined_ood0 = combined_ood.copy()
+    combined_ood = sc_X.transform(combined_ood)
+    mask, xGenerated = extract_ood(x_inDis, combined_ood, minDis)
 
-    dir = '/home/hh/data/train_us101_validate_us80/'
-    minDis = get_threshold(x_train, percentage, dir+'min_dis.png')
-    xGenerated = extract_ood(x_train, us101_ood, minDis)
-    x_validate = sc_X.transform(us80_x)
-    x_ood = np.concatenate((xGenerated, x_validate[~mask_validate_us80]))
-    np.savez(dir+'us101_train_validate_ood.npz', a=x_train, b=x_validate[mask_validate_us80], c=x_ood,
-             d=us101_y, e=us80_y[mask_validate_us80])
+    # split to train and test
+    sz = x_inDis.shape[0]
+    trainRatio = 0.75
+    x_train = x_inDis[:int(sz * trainRatio)]
+    y_train = y_inDis[:int(sz * trainRatio)].astype(int)
+    x_test = x_inDis[int(sz * trainRatio):]
+    y_test = y_inDis[int(sz * trainRatio):].astype(int)
+    print(y_train.shape[0], ' trainning samples, and ',
+          np.mean(y_train) * 100, '% positives')
+    print(y_test.shape[0], ' validate samples, and ',
+          np.mean(y_test) * 100, '% positives')
+
+    x_train0 = x_combined0[~oodLabel][:int(sz * trainRatio)]
+    print('for training:')
+    print('dv0 range ', min(x_train0[:,0]), max(x_train0[:,0]))
+    print('dv1 range ', min(x_train0[:,1]), max(x_train0[:,0]))
+    print('dx0 range ', min(x_train0[:,2]), max(x_train0[:,2]))
+    print('dx1 range ', min(x_train0[:,3]), max(x_train0[:,3]))
+    print('for ood:')
+    print('dv0 range ', min(combined_ood0[mask][:,0]), max(combined_ood0[mask][:,0]))
+    print('dv1 range ', min(combined_ood0[mask][:,1]), max(combined_ood0[mask][:,0]))
+    print('dx0 range ', min(combined_ood0[mask][:,2]), max(combined_ood0[mask][:,2]))
+    print('dx1 range ', min(combined_ood0[mask][:,3]), max(combined_ood0[mask][:,3]))
+    # x_ood = sc_X.transform(xGenerated)
+    # np.savez(dir + "combined_dataset.npz", a=x_train, b=y_train, c=x_test, d=y_test, e=x_ood)
+    np.savez(dir + "combined_dataset.npz", a=x_train, b=y_train, c=x_test, d=y_test, e=xGenerated)
 
 
+def generate_two_gaussian():
+    from plot_utils import plot_two_gaussian
+    np.random.seed(0)
+    variance = 2.
+    n_train = 1500
+    n_test = 1000
+    mean0 = [-2., 0.]
+    mean1 = [2., 0.]
+    cov = [[variance, 0], [0, variance]]
+    x0 = np.random.multivariate_normal(mean0, cov, n_train)
+    x0 = np.hstack((x0, np.zeros((x0.shape[0],1))))
+    x1 = np.random.multivariate_normal(mean1, cov, n_train)
+    x1 = np.hstack((x1, np.ones((x1.shape[0],1))))
+    x_train = np.concatenate((x0, x1))
+    np.random.shuffle(x_train)
+    plot_two_gaussian(x_train)
 
+    x0 = np.random.multivariate_normal(mean0, cov, n_test)
+    x0 = np.hstack((x0, np.zeros((x0.shape[0],1))))
+    x1 = np.random.multivariate_normal(mean1, cov, n_test)
+    x1 = np.hstack((x1, np.ones((x1.shape[0],1))))
+    x_test = np.concatenate((x0, x1))
+    np.random.shuffle(x_test)
+    dir = '/home/hh/data/two_gaussian/'
+    np.savez(dir+'two_gaussian_train_test.npz', a=x_train, b=x_test)
 
-# preprocess()
-# preprocess_both_dataset()
-# generate_ood_ngsim()
-# dir = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
-# dir = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
-# f = np.load(dir+'train_origin.npz')
-# visualize_sample(f)
-# f = np.load(dir+'validate_origin.npz')
-# visualize_sample(f)
-# inspect_abnormal()
-# cal_distance()
-# prepare_validate_and_generate_ood()
-# plt.show()
+if __name__ == "__main__":
+    # preprocess()
+    # preprocess_both_dataset()
+    # generate_ood_ngsim()
+    visualize_sample()
+    # visualize_sample_labeled_by_dx()
+    # visualize_sample(f)
+    # f = np.load(dir+'validate_origin.npz')
+    # visualize_sample(f)
+    # inspect_abnormal()
+    # cal_distance()
+    # prepare_validate_and_generate_ood()
+    # generate_two_gaussian()
+    # prepare_validate_and_generate_ood()
+    plt.show()

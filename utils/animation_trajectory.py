@@ -93,15 +93,16 @@ def make_movie_merge_infront():
 
 
     dir0 = '/home/hh/ngsim/I-80-Emeryville-CA/i-80-vehicle-trajectory-data/vehicle-trajectory-data/'
-    # dir = dir0 + '0400pm-0415pm/'
+    dir = dir0 + '0400pm-0415pm/'
     # dir = dir0 + '0500pm-0515pm/'
-    dir = dir0 + '0515pm-0530pm/'
+    # dir = dir0 + '0515pm-0530pm/'
     data = np.genfromtxt(dir + 'lane_changes.csv', delimiter=',')
     # for i in range(int(data[-1,0])+1):
     # idx = [135, 175, 217, 251, 298] # for 4:00-4:15, 251 for coop
     # idx = [17, 58, 271] # for 5:00-5:15, 271 for coop
-    idx = [25, 116, 230] # for 5:15-5:30, all coop
-    for i in idx:
+    # idx = [25, 116, 230] # for 5:15-5:30, all coop
+    # for i in idx:
+    for i in range(50):
         makeMovie(data, i, dir)
         print(i)
     # plt.show()

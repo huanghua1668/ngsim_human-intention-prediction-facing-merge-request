@@ -14,7 +14,7 @@ from utils.plot_utils import plot_save_acc_nzs_mmcs
 from utils.plot_utils import plot_save_roc
 from utils.data_preprocess import load_data
 
-from models import nnz, active, step, eval_step, eval_combined, csnn, Net2, Net3, Net4, MLP3, MLP4, pre_train
+from models import nnz, active, step, eval_step, eval_combined, csnn, Net2, Net3, Net4_learnable_r, MLP3, MLP4, pre_train
 
 # ngsim data
 (x_train, y_train, x_validate, y_validate, x_ood) = load_data()
@@ -58,14 +58,14 @@ maxAlpha = 1.
 trained = True
 bias = False
 pretrained = True
-outputDir='/home/hh/data/csnn/'
+outputDir='/home/hh/data/learnable_r/'
 
 for run in range(runs):
     np.random.seed(seeds[run])
     torch.manual_seed(seeds[run])
     dl_train = torch.utils.data.DataLoader(ds_train, batch_size=batchSize, shuffle=True, drop_last=False)
     dl_test = torch.utils.data.DataLoader(ds_test, batch_size=x_validate.shape[0], shuffle=False)
-    model = Net4(inputs, hiddenUnits)
+    model = Net4_learnable_r(inputs, hiddenUnits)
     optimizer = torch.optim.Adam(model.parameters(), lr=learningRate,
                                  weight_decay=l2Penalty)
     pre_train(model, optimizer, dl_train, dl_test, x_train, y_train, x_validate, y_validate, run, outputDir, maxEpoch=10)
@@ -104,16 +104,17 @@ for run in range(runs):
     for epoch in range(epochs):
         # alpha = min(1, max(0, (epoch**0.1-1.5)/0.6))
         # alpha = epoch/epochs
-        alpha = maxAlpha * epoch/epochs
+        # alpha = maxAlpha * epoch/epochs
+        alpha = 0.3
         # r2 = min(0.01, 0.01 - epoch * 0.06 / 5000)
         # r2 = 1.
         for i, batch in enumerate(dl_train):
-            loss, x, y, y_pred, z = step(model, optimizer, batch, alpha, r2)
+            loss_ce, loss_penalty, x, y, y_pred, z = step(model, optimizer, batch, alpha, r2, learnable_r=True)
 
-        accuracy, loss = eval_step(model, x_train, y_train, alpha, r2)
+        accuracy, loss_ce, loss_penalty = eval_step(model, x_train, y_train, alpha, r2, learnable_r=True)
         #if epoch % 10 == 0:
         #    print('train: epoch {}, accuracy {:.3f}, loss {:.3f}'.format(epoch, accuracy, loss))
-        testacc, testloss = eval_step(model, x_validate, y_validate, alpha, r2)
+        testacc, testloss_ce, testloss_penalty = eval_step(model, x_validate, y_validate, alpha, r2, learnable_r=True)
         if testacc > bestValidationAcc:
             # include both learnable param and registered buffer
             # PATH = outputDir+'/csnn_2_csnn_layers_run{}_r2{:.1f}_maxAlpha{:.1f}_affine_false.pth'.format(run, r2, maxAlpha)
@@ -122,11 +123,11 @@ for run in range(runs):
 
         if epoch % 5 == 0:
             #print('validation: epoch {}, fc1 shape {}, loss {:.3f}'.format(epoch, model.fc1.weight.data.shape[0], loss))
-            losses.append(loss)
-            losses_validate.append(testloss)
+            losses.append(loss_ce+loss_penalty)
+            losses_validate.append(testloss_ce+testloss_penalty)
             accuracies.append(accuracy)
             accuracies_validate.append(testacc)
-            nz, mmc = nnz(x_ood, model, alpha, r2)
+            nz, mmc = nnz(x_ood, model, alpha, model.r * model.r)
             alphas.append(alpha)
             mmcs.append(mmc)
             nzs.append(nz)
@@ -134,8 +135,10 @@ for run in range(runs):
             falsePositiveRate, truePositiveRate, _= roc_curve(label_ood, -uncertainties)
             AUC = auc(falsePositiveRate.astype(np.float32), truePositiveRate.astype(np.float32))
             aucs.append(AUC)
-            print('epoch {}, alpha {:.2f}, r2 {:.1f}, nz {:.3f}, train {:.3f}, test {:.3f}, auroc {:.3f}'
-              .format(epoch, alpha, r2, 1.-nz,accuracy,testacc, AUC))
+            rNorm = (torch.norm(model.r, p=2)).detach().numpy()
+            print('epoch {}, alpha {:.2f}, r2 {:.1f}, nz {:.3f}, train {:.3f}, test {:.3f}, auroc {:.3f}, ||r||2 {:.3f}'
+              .format(epoch, alpha, r2, 1.-nz,accuracy,testacc, AUC, rNorm))
+            print('loss: cross_entropy {:.4f}, penalty {:.4f}'.format(loss_ce, loss_penalty))
 
         # eliminate dead nodes
         # if (   (epoch<200 and (epoch + 1) % (epochs / 100) == 0)

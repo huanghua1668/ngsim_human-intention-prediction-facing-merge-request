@@ -18,8 +18,6 @@ from utils.plot_utils import plot_save_roc, plot_circles
 from utils.data_preprocess import load_data_both_dataset
 from models import nnz, active, step, eval_step, eval_combined, Net3, Net4, Net4_learnable_r, MLP3, MLP4, csnn, csnn_learnable_r, pre_train
 
-
-
 def vis(model, X_grid, xx, x_lin, y_lin, X_vis, mask, epoch, dir0, alpha=1., learnable_r = False):
     with torch.no_grad():
         if learnable_r:
@@ -35,51 +33,57 @@ def vis(model, X_grid, xx, x_lin, y_lin, X_vis, mask, epoch, dir0, alpha=1., lea
     l = np.linspace(0.5, 1., 21)
     plt.contourf(x_lin, y_lin, z, cmap=plt.get_cmap('inferno'), levels=l)  # , extend='both')
     plt.colorbar()
+    X_vis = X_vis[::4]
+    mask = mask[::4]
     plt.scatter(X_vis[mask, 0], X_vis[mask, 1])
     plt.scatter(X_vis[~mask, 0], X_vis[~mask, 1])
     # plt.axis([-3, 3., -3, 3])
-    # dir0 = '/home/hh/data/moons/'
     dir = dir0 + '/confidence_epoch_{}.png'.format(epoch)
     plt.savefig(dir)
     # plt.show()
-    if(epoch == 490):
-        dir = dir0 + '/moons_confidence_alpha0.npz'
-        np.savez(dir,  a=x_lin, b=y_lin, c=z, d=X_vis, e=mask)
 
 seeds = [0, 100057, 300089, 500069, 700079]
 num_classes = 2
 batchSize = 64
-# features = 64
-features = 512
+features = 64
+# features = 256
 learningRate = 0.001
 l2Penalty = 1.0e-3
 runs = 1
 r2 = 1.
 maxAlpha = 1.
-LAMBDA = 0.8
-MIU = 0.08
+LAMBDA = 1.28
+MIU = 0.0
 epochs = 500
-outputDir='/home/hh/data/moons/alpha_1/'
+outputDir='/home/hh/data/two_gaussian/'
 learnable_r = True
-BIAS = True
+BIAS = False
 
 # Moons
 noise = 0.1
 # sklearn has no random seed, it depends on numpy to get random numbers
-np.random.seed(0)
-x_train, y_train = sklearn.datasets.make_moons(n_samples=1500, noise=noise)
+
+data = np.load(outputDir + 'two_gaussian_train_test.npz')
+x_train = data['a']
+y_train = x_train[:, -1]
+y_train = y_train.astype(int)
+x_train = x_train[:, :-1]
+x_validate = data['b']
+y_validate = x_validate[:, -1]
+y_validate = y_validate.astype(int)
+x_validate = x_validate[:, :-1]
 x_train0 = x_train
-x_validate, y_validate = sklearn.datasets.make_moons(n_samples=200, noise=noise)
 mean = np.mean(x_train, axis=0)
 std = np.std(x_train, axis=0)
+
 print('mean, std', mean, std)
 x_train = (x_train-mean)/std/np.sqrt(2)
 x_validate = (x_validate-mean)/std/np.sqrt(2)
 
 # dataset for image output
-domain = 3
-x_lin = np.linspace(-domain+0.5, domain+0.5, 100)
-y_lin = np.linspace(-domain, domain, 100)
+domain = 8
+x_lin = np.linspace(-domain+0.5, domain+0.5, 200)
+y_lin = np.linspace(-domain, domain, 200)
 # x_lin = np.linspace(-domain+0.5, domain+0.5, 200)
 # y_lin = np.linspace(-domain, domain, 200)
 x_lin = (x_lin-mean[0])/std[0]/np.sqrt(2)
@@ -90,9 +94,9 @@ xx, yy = np.meshgrid(x_lin, y_lin)
 X_grid = np.column_stack([xx.flatten(), yy.flatten()])
 # X_grid = (X_grid-mean)/std/np.sqrt(2)
 
-X_vis, y_vis = sklearn.datasets.make_moons(n_samples=1000, noise=noise)
+X_vis, y_vis =  x_validate, y_validate
 mask = y_vis.astype(np.bool)
-X_vis = (X_vis-mean)/std/np.sqrt(2) # no need here, as contour grid is built on x_lin, y_lin
+# X_vis = (X_vis-mean)/std/np.sqrt(2) # no need here, as contour grid is built on x_lin, y_lin
 
 ds_train = torch.utils.data.TensorDataset(torch.from_numpy(x_train).float(),
                                           F.one_hot(torch.from_numpy(y_train)).float())
@@ -124,7 +128,7 @@ for run in range(runs):
                                  weight_decay=l2Penalty)
     accuracy, loss, accuracy_validate, loss_validate = pre_train(model, optimizer, dl_train, dl_test, x_train,
                                                                  y_train, x_validate, y_validate, run, outputDir,
-                                                                 maxEpoch=50)
+                                                                 maxEpoch=5)
     accs.append(accuracy)
     losses.append(loss)
     accs_validate.append(accuracy_validate)
@@ -135,13 +139,13 @@ np.savez(dir, a=np.mean(accs, axis=0), b=np.std(accs, axis=0),
          e=np.mean(accs_validate, axis=0), f=np.std(accs_validate, axis=0),
          g=np.mean(losses_validate, axis=0), h=np.std(losses_validate, axis=0))
 
+
 ACCs = []
 ACCs_val = []
 LOSSs = []
 LOSSs_val = []
 ALPHAs = None
 bestValidationAccs = []
-# runs = 0
 for run in range(runs):
     np.random.seed(seeds[run])
     torch.manual_seed(seeds[run])
@@ -216,8 +220,8 @@ for run in range(runs):
                    .format(epoch, alpha, r2, accuracy, testacc))
         if epoch%10 == 0 or epoch<10:
             vis(model, X_grid, xx, x_lin, y_lin, X_vis, mask, epoch, outputDir, alpha, learnable_r)
-            # if BIAS: print('w0: ', np.sort(model.fc1.bias.detach().numpy())[::8])
-            # plot_circles(model.fc1, x_train, y_train, alpha, model.r.detach().numpy(), epoch, BIAS)
+            if BIAS: print('w0: ', np.sort(model.fc1.bias.detach().numpy())[::8])
+            plot_circles(model.fc1, x_train, y_train, alpha, model.r.detach().numpy(), epoch, outputDir, BIAS)
 
     plot_save_loss(losses, losses_validate, outputDir+'/loss_run{}.png'.format(run))
     plot_save_acc(accuracies, accuracies_validate, outputDir+'/acc_run{}.png'.format(run))
